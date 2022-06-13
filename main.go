@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -74,6 +75,16 @@ type PostBody struct {
 	Text             Text   `json:"text"`
 }
 
+func goDotEnvVariable(key string) string {
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	return os.Getenv(key)
+}
+
 func main() {
 	db, err := sql.Open("sqlite3", "./reminders.db")
 	if err != nil {
@@ -98,7 +109,7 @@ func main() {
 		return
 	}
 
-	port := os.Getenv("PORT")
+	port := goDotEnvVariable("PORT")
 
 	if port == "" {
 		port = "8000"
@@ -136,13 +147,13 @@ func main() {
 						log.Printf("%q: %s\n", err, sqlCreateStmt)
 					}
 
-					token := os.Getenv("FACEBOOK_TOKEN")
+					token := goDotEnvVariable("FACEBOOK_TOKEN")
 
 					postBody, _ := json.Marshal(PostBody{
 						MessagingProduct: "whatsapp",
 						To:               from,
 						Text: Text{
-							Body: "I will remind you at the end of the week",
+							Body: "I will remind you at the end of the week.",
 						},
 					})
 
