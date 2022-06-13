@@ -117,7 +117,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/webhook", func(c *gin.Context) {
 		var verify Verify
-		verifyToken := os.Getenv("VERIFY_TOKEN")
+		verifyToken := goDotEnvVariable("VERIFY_TOKEN")
 		if c.ShouldBindQuery(&verify) == nil {
 			if verify.Mode != "" && verify.Token != "" {
 				if verify.Mode == "subscribe" && verify.Token == verifyToken {
