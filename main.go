@@ -115,6 +115,9 @@ func main() {
 		port = "8000"
 	}
 	router := gin.Default()
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, "Hello there")
+	})
 	router.GET("/webhook", func(c *gin.Context) {
 		var verify Verify
 		verifyToken := goDotEnvVariable("VERIFY_TOKEN")
