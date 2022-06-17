@@ -86,6 +86,12 @@ func goDotEnvVariable(key string) string {
 }
 
 func main() {
+	file, err := os.OpenFile("logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetOutput(file)
+
 	db, err := sql.Open("sqlite3", "./reminders.db")
 	if err != nil {
 		log.Fatal(err)
@@ -116,7 +122,7 @@ func main() {
 	}
 	router := gin.Default()
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, "Hello there")
+		c.JSON(http.StatusOK, "Hello there Kacha")
 	})
 	router.GET("/webhook", func(c *gin.Context) {
 		var verify Verify
