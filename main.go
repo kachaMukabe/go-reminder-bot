@@ -188,13 +188,14 @@ func main() {
 
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	scheduler.Every(2).Hours().Do(func() {
+	scheduler.Every(10).Minutes().Do(func() {
 		indexes := make([]int, 3)
 		rows, err := db.Query("SELECT * FROM reminders")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer rows.Close()
+		log.Println("I'm sending hopefully")
 		for rows.Next() {
 			var id int
 			var dateCreated time.Time
