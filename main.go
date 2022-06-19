@@ -169,8 +169,10 @@ func main() {
 					})
 
 					responseBody := bytes.NewBuffer(postBody)
+					fmt.Println(postBody)
 
 					resp, err := http.Post(fmt.Sprintf("https://graph.facebook.com/v12.0/%s/messages?access_token=%s", phoneNumberId, token), "application/json", responseBody)
+					fmt.Println(resp)
 
 					if err != nil {
 						log.Fatalf("An error occured %v", err)
@@ -188,14 +190,13 @@ func main() {
 
 	scheduler := gocron.NewScheduler(time.UTC)
 
-	scheduler.Every(10).Minutes().Do(func() {
+	scheduler.Every(1).Day().At("08:00;12:00;18:00").Do(func() {
 		indexes := make([]int, 3)
-		rows, err := db.Query("SELECT * FROM reminders")
+		rows, err := db.Query("SELECT * FROM reminders WHERE been_reminded=false")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer rows.Close()
-		log.Println("I'm sending hopefully")
 		for rows.Next() {
 			var id int
 			var dateCreated time.Time
@@ -206,7 +207,8 @@ func main() {
 			var reminderDate time.Time
 			var beenReminded bool
 
-			err = rows.Scan(&id, &dateCreated, &userName, &userNumber, &businessNumber, &reminder, &reminderDate, &beenReminded)
+			// TODO: Order matters a lot perhaps make a struct that can be used with sqlite
+			err = rows.Scan(&id, &dateCreated, &userNumber, &businessNumber, &userName, &reminder, &reminderDate, &beenReminded)
 
 			if err != nil {
 				log.Fatal(err)
@@ -231,7 +233,9 @@ func main() {
 				}
 
 				defer resp.Body.Close()
-				indexes = append(indexes, id)
+				if resp.StatusCode == 200 {
+					indexes = append(indexes, id)
+				}
 
 			}
 		}
