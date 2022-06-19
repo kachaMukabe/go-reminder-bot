@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -103,6 +104,7 @@ func main() {
 	id INTEGER NOT NULL PRIMARY KEY,
 	date_created DATETIME NOT NULL,
 	user_number TEXT,
+	business_number TEXT,
 	user_name TEXT,
 	reminder TEXT,
 	reminder_date DATETIME,
@@ -150,7 +152,7 @@ func main() {
 					messBody := body.Entry[0].Changes[0].Value.Messages[0].Text.Body
 					fmt.Println(phoneNumberId, name, from, messBody)
 
-					_, err = db.Exec("INSERT INTO reminders VALUES(NULL,?,?,?,?,?,?);", time.Now(), from, name, messBody, time.Now(), false)
+					_, err = db.Exec("INSERT INTO reminders VALUES(NULL,?,?,?,?,?,?,?);", time.Now(), from, phoneNumberId, name, messBody, time.Now(), false)
 
 					if err != nil {
 						log.Printf("%q: %s\n", err, sqlCreateStmt)
@@ -183,6 +185,67 @@ func main() {
 			}
 		}
 	})
+
+	scheduler := gocron.NewScheduler(time.UTC)
+
+	scheduler.Every(2).Hours().Do(func() {
+		indexes := make([]int, 3)
+		rows, err := db.Query("SELECT * FROM reminders")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id int
+			var dateCreated time.Time
+			var userName string
+			var userNumber string
+			var businessNumber string
+			var reminder string
+			var reminderDate time.Time
+			var beenReminded bool
+
+			err = rows.Scan(&id, &dateCreated, &userName, &userNumber, &businessNumber, &reminder, &reminderDate, &beenReminded)
+
+			if err != nil {
+				log.Fatal(err)
+			}
+			if time.Now().After(reminderDate) && !beenReminded {
+				token := goDotEnvVariable("FACEBOOK_TOKEN")
+
+				postBody, _ := json.Marshal(PostBody{
+					MessagingProduct: "whatsapp",
+					To:               userNumber,
+					Text: Text{
+						Body: reminder,
+					},
+				})
+
+				responseBody := bytes.NewBuffer(postBody)
+
+				resp, err := http.Post(fmt.Sprintf("https://graph.facebook.com/v12.0/%s/messages?access_token=%s", businessNumber, token), "application/json", responseBody)
+
+				if err != nil {
+					log.Fatalf("An error occured %v", err)
+				}
+
+				defer resp.Body.Close()
+				indexes = append(indexes, id)
+
+			}
+		}
+
+		for _, value := range indexes {
+			_, err = db.Exec("UPDATE reminders SET been_reminded=true WHERE id=?;", value)
+
+			if err != nil {
+				log.Printf("update %q", err)
+			}
+
+		}
+	})
+
+	scheduler.StartAsync()
 
 	router.Run(fmt.Sprintf(":%s", port))
 }
